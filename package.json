@@ -1,0 +1,18 @@
+{
+  "name": "mall-system",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "bootstrap": "npm install --prefix backend/common && npm install --prefix backend/gateway-service && npm install --prefix backend/user-service && npm install --prefix backend/product-service && npm install --prefix backend/cart-service && npm install --prefix backend/order-service && npm install --prefix backend/payment-service && npm install --prefix frontend/mall-web",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down",
+    "dev:gateway": "npm run dev --prefix backend/gateway-service",
+    "dev:user": "npm run dev --prefix backend/user-service",
+    "dev:product": "npm run dev --prefix backend/product-service",
+    "dev:cart": "npm run dev --prefix backend/cart-service",
+    "dev:order": "npm run dev --prefix backend/order-service",
+    "dev:payment": "npm run dev --prefix backend/payment-service",
+    "dev:frontend": "npm run dev --prefix frontend/mall-web"
+  }
+}
+

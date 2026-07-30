@@ -1,0 +1,295 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: mall-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-123456}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-mall_system}
+      TZ: Asia/Shanghai
+    command:
+      - --default-authentication-plugin=mysql_native_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backend/common/sql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_PASSWORD:-123456}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: mall-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: mall-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-mall}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-mall123}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-/}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
+  user-service:
+    build:
+      context: ./backend
+      dockerfile: user-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: root
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-123456}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-mall_system}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-mall}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-mall123}
+      JWT_SECRET: ${JWT_SECRET:-replace-with-a-strong-secret}
+      USER_SERVICE_PORT: 3101
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+    ports:
+      - "3101:3101"
+
+  product-service:
+    build:
+      context: ./backend
+      dockerfile: product-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: root
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-123456}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-mall_system}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-mall}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-mall123}
+      RABBITMQ_EXCHANGE: ${RABBITMQ_EXCHANGE:-mall.event.exchange}
+      RABBITMQ_ORDER_CREATED_QUEUE: ${RABBITMQ_ORDER_CREATED_QUEUE:-mall.order.created.queue}
+      RABBITMQ_ORDER_PAID_QUEUE: ${RABBITMQ_ORDER_PAID_QUEUE:-mall.order.paid.queue}
+      RABBITMQ_STOCK_DEDUCT_QUEUE: ${RABBITMQ_STOCK_DEDUCT_QUEUE:-mall.stock.deduct.queue}
+      RABBITMQ_STOCK_ROLLBACK_QUEUE: ${RABBITMQ_STOCK_ROLLBACK_QUEUE:-mall.stock.rollback.queue}
+      RABBITMQ_ORDER_CREATED_KEY: ${RABBITMQ_ORDER_CREATED_KEY:-order.created}
+      RABBITMQ_ORDER_PAID_KEY: ${RABBITMQ_ORDER_PAID_KEY:-order.paid}
+      RABBITMQ_STOCK_DEDUCT_KEY: ${RABBITMQ_STOCK_DEDUCT_KEY:-stock.deduct}
+      RABBITMQ_STOCK_ROLLBACK_KEY: ${RABBITMQ_STOCK_ROLLBACK_KEY:-stock.rollback}
+      JWT_SECRET: ${JWT_SECRET:-replace-with-a-strong-secret}
+      PRODUCT_SERVICE_PORT: 3102
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-mall-internal-token}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+    ports:
+      - "3102:3102"
+
+  cart-service:
+    build:
+      context: ./backend
+      dockerfile: cart-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: root
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-123456}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-mall_system}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-mall}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-mall123}
+      JWT_SECRET: ${JWT_SECRET:-replace-with-a-strong-secret}
+      PRODUCT_SERVICE_URL: http://product-service:3102
+      CART_SERVICE_PORT: 3103
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-mall-internal-token}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+      product-service:
+        condition: service_started
+    ports:
+      - "3103:3103"
+
+  order-service:
+    build:
+      context: ./backend
+      dockerfile: order-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: root
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-123456}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-mall_system}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-mall}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-mall123}
+      RABBITMQ_EXCHANGE: ${RABBITMQ_EXCHANGE:-mall.event.exchange}
+      RABBITMQ_ORDER_CREATED_QUEUE: ${RABBITMQ_ORDER_CREATED_QUEUE:-mall.order.created.queue}
+      RABBITMQ_ORDER_PAID_QUEUE: ${RABBITMQ_ORDER_PAID_QUEUE:-mall.order.paid.queue}
+      RABBITMQ_STOCK_DEDUCT_QUEUE: ${RABBITMQ_STOCK_DEDUCT_QUEUE:-mall.stock.deduct.queue}
+      RABBITMQ_STOCK_ROLLBACK_QUEUE: ${RABBITMQ_STOCK_ROLLBACK_QUEUE:-mall.stock.rollback.queue}
+      RABBITMQ_ORDER_CREATED_KEY: ${RABBITMQ_ORDER_CREATED_KEY:-order.created}
+      RABBITMQ_ORDER_PAID_KEY: ${RABBITMQ_ORDER_PAID_KEY:-order.paid}
+      RABBITMQ_STOCK_DEDUCT_KEY: ${RABBITMQ_STOCK_DEDUCT_KEY:-stock.deduct}
+      RABBITMQ_STOCK_ROLLBACK_KEY: ${RABBITMQ_STOCK_ROLLBACK_KEY:-stock.rollback}
+      JWT_SECRET: ${JWT_SECRET:-replace-with-a-strong-secret}
+      PRODUCT_SERVICE_URL: http://product-service:3102
+      CART_SERVICE_URL: http://cart-service:3103
+      ORDER_SERVICE_PORT: 3104
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-mall-internal-token}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+      product-service:
+        condition: service_started
+      cart-service:
+        condition: service_started
+    ports:
+      - "3104:3104"
+
+  payment-service:
+    build:
+      context: ./backend
+      dockerfile: payment-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: root
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-123456}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-mall_system}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-mall}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-mall123}
+      RABBITMQ_EXCHANGE: ${RABBITMQ_EXCHANGE:-mall.event.exchange}
+      RABBITMQ_ORDER_CREATED_QUEUE: ${RABBITMQ_ORDER_CREATED_QUEUE:-mall.order.created.queue}
+      RABBITMQ_ORDER_PAID_QUEUE: ${RABBITMQ_ORDER_PAID_QUEUE:-mall.order.paid.queue}
+      RABBITMQ_STOCK_DEDUCT_QUEUE: ${RABBITMQ_STOCK_DEDUCT_QUEUE:-mall.stock.deduct.queue}
+      RABBITMQ_STOCK_ROLLBACK_QUEUE: ${RABBITMQ_STOCK_ROLLBACK_QUEUE:-mall.stock.rollback.queue}
+      RABBITMQ_ORDER_CREATED_KEY: ${RABBITMQ_ORDER_CREATED_KEY:-order.created}
+      RABBITMQ_ORDER_PAID_KEY: ${RABBITMQ_ORDER_PAID_KEY:-order.paid}
+      RABBITMQ_STOCK_DEDUCT_KEY: ${RABBITMQ_STOCK_DEDUCT_KEY:-stock.deduct}
+      RABBITMQ_STOCK_ROLLBACK_KEY: ${RABBITMQ_STOCK_ROLLBACK_KEY:-stock.rollback}
+      JWT_SECRET: ${JWT_SECRET:-replace-with-a-strong-secret}
+      ORDER_SERVICE_URL: http://order-service:3104
+      PAYMENT_SERVICE_PORT: 3105
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-mall-internal-token}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+      order-service:
+        condition: service_started
+    ports:
+      - "3105:3105"
+
+  gateway-service:
+    build:
+      context: ./backend
+      dockerfile: gateway-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: root
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-123456}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-mall_system}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-mall}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-mall123}
+      RATE_LIMIT_WINDOW_SECONDS: ${RATE_LIMIT_WINDOW_SECONDS:-60}
+      RATE_LIMIT_MAX_REQUESTS: ${RATE_LIMIT_MAX_REQUESTS:-120}
+      RATE_LIMIT_LOGIN_MAX: ${RATE_LIMIT_LOGIN_MAX:-12}
+      RATE_LIMIT_PRODUCT_QUERY_MAX: ${RATE_LIMIT_PRODUCT_QUERY_MAX:-600}
+      RATE_LIMIT_ORDER_CREATE_MAX: ${RATE_LIMIT_ORDER_CREATE_MAX:-40}
+      JWT_SECRET: ${JWT_SECRET:-replace-with-a-strong-secret}
+      USER_SERVICE_URL: http://user-service:3101
+      PRODUCT_SERVICE_URL: http://product-service:3102
+      CART_SERVICE_URL: http://cart-service:3103
+      ORDER_SERVICE_URL: http://order-service:3104
+      PAYMENT_SERVICE_URL: http://payment-service:3105
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-mall-internal-token}
+      GATEWAY_PORT: 3000
+    depends_on:
+      user-service:
+        condition: service_started
+      product-service:
+        condition: service_started
+      cart-service:
+        condition: service_started
+      order-service:
+        condition: service_started
+      payment-service:
+        condition: service_started
+    ports:
+      - "3000:3000"
+
+  mall-web:
+    build:
+      context: ./frontend/mall-web
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:3000/api}
+    depends_on:
+      gateway-service:
+        condition: service_started
+    ports:
+      - "5173:5173"
+
+volumes:
+  mysql_data:
+  redis_data:
+  rabbitmq_data:
