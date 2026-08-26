@@ -5,20 +5,28 @@ const http = axios.create({
   timeout: 10000
 });
 
-http.interceptors.request.use((config) => {
-  const token = localStorage.getItem('mall_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+// 请求拦截器：内部动态导入pinia，规避顶层循环依赖
+http.interceptors.request.use(async (config) => {
+  // 函数内动态引入，不会启动时报路径/实例未创建错误
+  const { useAuthStore } = await import('@/stores/auth');
+  const authStore = useAuthStore();
+  if (authStore.token) {
+    config.headers.Authorization = `Bearer ${authStore.token}`;
   }
   return config;
 });
 
+// 响应拦截器
 http.interceptors.response.use(
   (response) => response.data,
-  (error) => {
+  async (error) => {
+    // 401 令牌过期处理
     if (error.response?.status === 401) {
-      localStorage.removeItem('mall_token');
-      localStorage.removeItem('mall_user');
+      const { useAuthStore } = await import('@/stores/auth');
+      const authStore = useAuthStore();
+      authStore.clearLocalAuth();
+      // 跳转登录页
+      location.replace('/login');
     }
     const message = error.response?.data?.message || error.message || '请求失败';
     return Promise.reject(new Error(message));

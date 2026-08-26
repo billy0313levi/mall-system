@@ -143,7 +143,7 @@ watch(
   () => route.query,
   async (query) => {
     filters.page = Number(query.page || 1);
-    filters.pageSize = Number(query.pageSize || 8);
+    filters.pageSize = Number(query.pageSize || 16);
     filters.keyword = query.keyword || '';
     filters.categoryId = query.categoryId || '';
     await loadProducts();

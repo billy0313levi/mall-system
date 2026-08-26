@@ -71,7 +71,7 @@
     <div class="store-nav-bar">
       <div class="page-width store-nav-row">
         <nav class="store-main-nav">
-          <RouterLink to="/">首页</RouterLink>
+          <RouterLink to="/home">首页</RouterLink>
           <RouterLink to="/products">全部商品</RouterLink>
           <RouterLink to="/orders">订单中心</RouterLink>
           <RouterLink to="/addresses">收货地址</RouterLink>

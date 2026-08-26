@@ -19,7 +19,7 @@ const props = defineProps({
   },
   pageSize: {
     type: Number,
-    default: 10
+    default: 16
   },
   total: {
     type: Number,

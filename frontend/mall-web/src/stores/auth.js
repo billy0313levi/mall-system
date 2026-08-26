@@ -1,18 +1,10 @@
 import { defineStore } from 'pinia';
 import http from '../api/http';
 
-const userStorageKey = 'mall_user';
-const tokenStorageKey = 'mall_token';
-
-function readStoredUser() {
-  const value = localStorage.getItem(userStorageKey);
-  return value ? JSON.parse(value) : null;
-}
-
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    token: localStorage.getItem(tokenStorageKey) || '',
-    user: readStoredUser()
+    token: '',
+    user: null
   }),
   getters: {
     isLoggedIn: (state) => Boolean(state.token),
@@ -22,13 +14,10 @@ export const useAuthStore = defineStore('auth', {
     setAuth(payload) {
       this.token = payload.token;
       this.user = payload.user;
-      localStorage.setItem(tokenStorageKey, payload.token);
-      localStorage.setItem(userStorageKey, JSON.stringify(payload.user));
     },
     async fetchProfile() {
       const response = await http.get('/users/me');
       this.user = response.data;
-      localStorage.setItem(userStorageKey, JSON.stringify(response.data));
       return response.data;
     },
     async logoutRequest() {
@@ -44,8 +33,8 @@ export const useAuthStore = defineStore('auth', {
     clearLocalAuth() {
       this.token = '';
       this.user = null;
-      localStorage.removeItem(tokenStorageKey);
-      localStorage.removeItem(userStorageKey);
     }
-  }
+  },
+  // 开启持久化，默认用localStorage存储整个auth仓库
+  persist: true
 });
