@@ -5,15 +5,16 @@
 本项目是一个微服务商城系统，前端采用 Vue3，后端采用 Node.js + Express，围绕网关、用户、商品、购物车、订单、支付六个服务展开
 
 ##项目截图
-![首页](./screenshot/home.png)
-![商品页](./screenshot/goods.png)
-![购物车页](./screenshot/cart.png)
-![订单列表页](./screenshot/order.png)
-![后台首页](./screenshot/admin-home.png)
-![商品管理页](./screenshot/admin-goods.png)
-![分类管理页](./screenshot/admin-category.png)
-![订单管理页](./screenshot/admin-order.png)
-![库存管理页](./screenshot/admin-stock.png)
+
+- ![首页](./screenshot/home.png)
+- ![商品页](./screenshot/goods.png)
+- ![购物车页](./screenshot/cart.png)
+- ![订单列表页](./screenshot/order.png)
+- ![后台首页](./screenshot/admin-home.png)
+- ![商品管理页](./screenshot/admin-goods.png)
+- ![分类管理页](./screenshot/admin-category.png)
+- ![订单管理页](./screenshot/admin-order.png)
+- ![库存管理页](./screenshot/admin-stock.png)
 
 ## 技术栈
 
